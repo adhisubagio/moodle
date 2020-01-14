@@ -718,9 +718,9 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
      */
     protected static function get_tree($id) {
         $coursecattreecache = cache::make('core', 'coursecattree');
-        $rv = $coursecattreecache->get($id);
-        if ($rv !== false) {
-            return $rv;
+        $all = $coursecattreecache->get('all');
+        if ($all !== false && array_key_exists($id, $all)) {
+            return $all[$id];
         }
         // Might need to rebuild the tree. Put a lock in place to ensure other requests don't try and do this in parallel.
         $lockfactory = \core\lock\lock_config::get_lock_factory('core_coursecattree');
@@ -730,16 +730,16 @@ class core_course_category implements renderable, cacheable_object, IteratorAggr
             // Couldn't get a lock to rebuild the tree.
             return [];
         }
-        $rv = $coursecattreecache->get($id);
-        if ($rv !== false) {
+        $all = $coursecattreecache->get('all');
+        if ($all !== false && array_key_exists($id, $all)) {
             // Tree was built while we were waiting for the lock.
             $lock->release();
-            return $rv;
+            return $all[$id];
         }
         // Re-build the tree.
         try {
             $all = self::rebuild_coursecattree_cache_contents();
-            $coursecattreecache->set_many($all);
+            $coursecattreecache->set('all', $all);
         } finally {
             $lock->release();
         }
